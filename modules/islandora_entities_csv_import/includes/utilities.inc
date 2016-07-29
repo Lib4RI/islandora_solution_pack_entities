@@ -43,7 +43,11 @@ function islandora_entities_read_csv($path) {
   ini_set("auto_detect_line_endings", "1");
   $scholars = array();
   if (($handle = fopen($path, "r")) !== FALSE) {
-    while (($data = fgetcsv($handle, 0, ",")) !== FALSE) {
+/* START EDIT [DP] */
+/*** !!! FROM NOW ON CSV MEANS PIPE-SEPARATED-VALUES !!! ***/
+/*    while (($data = fgetcsv($handle, 0, ",")) !== FALSE) { */
+    while (($data = fgetcsv($handle, 0, "|")) !== FALSE) {
+/* END EDIT [DP] */
       if (!isset($header)) {
         $header = $data;
         continue;
@@ -71,7 +75,11 @@ function islandora_entities_build_scholar_object($scholar, $collection_pid) {
   $mads = islandora_entities_build_mads($scholar);
   $tuque = new IslandoraTuque();
   $repository = $tuque->repository;
-  $fedora_object = $repository->constructObject('islandora');
+/* START EDIT [DP] */
+$fedora_object_namespace = preg_replace('/:collection$/', '', $collection_pid ); /* this assumes that collection-pids are of the form 'namespace:collection' */
+/*  $fedora_object = $repository->contructObject('islandora'); */
+$fedora_object = $repository->constructObject($fedora_object_namespace);
+/* END EDIT [DP] */
   $fedora_object->label = isset($scholar['DISPLAY_NAME']) ? $scholar['DISPLAY_NAME'] : 'Member';
   $fedora_object->owner = 'admin';
   $datastream = $fedora_object->constructDatastream('MADS', 'M');
@@ -122,6 +130,7 @@ function islandora_entities_build_mads($scholar) {
   $xlink->appendChild($value);
 
   islandora_entities_add_authority($dom, $scholar);
+  islandora_entities_add_variant($dom, $scholar);
   islandora_entities_add_affiliation($dom, $scholar);
   islandora_entities_add_building_address($dom, $scholar);
 
@@ -185,6 +194,42 @@ function islandora_entities_add_authority($dom, $scholar) {
     islandora_entities_attach_element($dom, "title", $title_info, $scholar['DISPLAY_NAME']);
   }
 }
+
+/**
+ * Adds authority.
+ *
+ * @param DomDocument $dom
+ *   Document holding MADS data
+ * @param array $scholar
+ *   Associative array of header => value pairs
+ */
+function islandora_entities_add_variant($dom, $scholar) {
+  $name = array();
+  $nameparts = array(
+    'VAR_GIVEN_NAME',
+    'VAR_FAMILY_NAME',    
+  );
+  foreach ($nameparts as $namepart) {
+    if (isset($scholar[$namepart])) {
+      $name[$namepart] = $scholar[$namepart];
+    }
+  }
+  if (count($name) == 0) {
+    return;
+  }
+  $root = $dom->documentElement;
+  $authority = islandora_entities_attach_element($dom, "variant", $root);
+  $name_node = islandora_entities_attach_element($dom, 'name', $authority);
+  if (isset($name['VAR_GIVEN_NAME'])) {
+    $name_part = islandora_entities_attach_element($dom, 'namePart', $name_node, $name['VAR_GIVEN_NAME']);
+    $name_part->setAttribute('type', 'given');
+  }
+  if (isset($name['VAR_FAMILY_NAME'])) {
+    $name_part = islandora_entities_attach_element($dom, 'namePart', $name_node, $name['VAR_FAMILY_NAME']);
+    $name_part->setAttribute('type', 'family');
+  }
+}
+
 
 /**
  * Adds affiliation.
