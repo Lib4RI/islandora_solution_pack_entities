@@ -78,7 +78,7 @@ function islandora_entities_menu() {
       'access callback' => 'islandora_entities_access',
       'access arguments' => array(2),
     ),
-    'islandora/object/%islandora_object/manage/object/udpatetn' => array(
+    'islandora/object/%islandora_object/manage/object/updatetn' => array(
       'title' => 'Update Thumbnail',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('islandora_entities_update_tn', 2),
@@ -107,7 +107,7 @@ function islandora_entities_menu() {
       'page callback' => 'drupal_get_form',
       'page arguments' => array('islandora_entities_citation_form', 2, 'theses'),
       'access callback' => 'islandora_entities_citation_access',
-      'access arguments' => array(2, "citations"),
+      'access arguments' => array(2, "theses"),
       'file' => 'includes/citation_tab.inc',
       'weight' => 2,
     ),
@@ -247,9 +247,9 @@ function islandora_entities_get_cmodel_form_name(AbstractObject $object) {
 }
 
 /**
- * Implements hook_islandora_xml_form_builder_form_associations().
+ * Implements hook_xml_form_builder_form_associations().
  */
-function islandora_entities_islandora_xml_form_builder_form_associations() {
+function islandora_entities_xml_form_builder_form_associations() {
   return array(
     'islandora_event_form' => array(
       'content_model' => ISLANDORA_ENTITIES_EVENT_CONTENT_MODEL,
@@ -338,9 +338,9 @@ function islandora_entities_islandora_xml_form_builder_form_associations() {
 }
 
 /**
- * Implements hook_islandora_xml_form_builder_forms().
+ * Implements hook_xml_form_builder_forms().
  */
-function islandora_entities_islandora_xml_form_builder_forms() {
+function islandora_entities_xml_form_builder_forms() {
   $module_path = drupal_get_path('module', 'islandora_entities');
   // Also load read only version's of the form.
   return array(
@@ -376,7 +376,18 @@ function islandora_entities_islandora_xml_form_builder_forms() {
     ),
   );
 }
-
+/**
+ * This hook allows modules to register XSLT self-transformations.
+ *
+ * @return array
+ *   An associative array mapping a shortened name to the full path of the
+ *   transformation.
+ */
+function islandora_entities_xml_form_builder_get_self_transforms() {
+  return array(
+    'cleanup_and_order_mads.xsl' => drupal_get_path('module', 'islandora_entities') . '/xml/cleanup_and_order_mads.xsl',
+  );
+}
 
 /**
  * Implements hook_form_FORM_ID_alter().
@@ -532,9 +543,9 @@ function islandora_entities_islandora_organizationCModel_islandora_object_ingest
 }
 
 /**
- * Implements hook_islandora_xml_form_builder_get_transforms().
+ * Implements hook_xml_form_builder_get_transforms().
  */
-function islandora_entities_islandora_xml_form_builder_get_transforms() {
+function islandora_entities_xml_form_builder_get_transforms() {
   $module_path = drupal_get_path('module', 'islandora_entities');
   return array(
     'eaccpf_to_dc.xsl' => "$module_path/xml/eaccpf_to_dc.xsl",
@@ -601,8 +612,10 @@ function islandora_entities_citation_access($object, $type) {
       $simplexml = simplexml_load_string($mads);
       $identifiers = $simplexml->identifier;
       foreach ($identifiers as $identifier) {
-        if ($identifier['type'] == 'u1') {
-          $results = islandora_entities_get_related((string) $identifier, (string) $simplexml->authority->titleInfo->title, $type);
+        // PHP 5.3 and 5.4 can't handle empty((string) $identifier).
+        $string_id = (string) $identifier;
+        if ($identifier['type'] == 'u1' && !empty($string_id)) {
+          $results = islandora_entities_get_related($string_id, (string) $simplexml->authority->titleInfo->title, $type);
         }
       }
     }
@@ -614,13 +627,10 @@ function islandora_entities_citation_access($object, $type) {
  * Implements hook_preprocess_html().
  */
 function islandora_entities_preprocess_html(&$variables) {
-  if (isset($_GET['q'])) {
-    $q_parts = explode('/', $_GET['q']);
-    if ($q_parts[0] == 'islandora' && $q_parts[1] == 'object') {
-      $object = islandora_object_load($q_parts[2]);
-      if ($object && in_array('islandora:entityCModel', $object->models)) {
-        $variables['classes_array'][] = "islandora-entity";
-      }
-    }
+  $object = menu_get_object('islandora_object', 2);
+  // Making sure the router position is there, and that an object gets loaded,
+  // and that it has the right content model, in that order.
+  if (is_object($object) && in_array('islandora:entityCModel', $object->models)) {
+    $variables['classes_array'][] = "islandora-entity";
   }
 }

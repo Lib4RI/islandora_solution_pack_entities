@@ -60,23 +60,22 @@ function islandora_entities_query_entities_callback($type) {
  *   array of all candidates
  */
 function islandora_entities_autocomplete($type) {
-
   $mappings = array(
     'scholar' => array(
       'cmodel' => 'islandora:personCModel',
-      'title' => 'MADS_title_mt',
+      'title' => variable_get('islandora_entities_scholar_title_solr_field', 'MADS_title_mt'),
     ),
     'department' => array(
       'cmodel' => 'islandora:organizationCModel',
-      'title' => 'MADS_department_mt',
+      'title' => variable_get('islandora_entities_department_solr_field', 'MADS_department_mt'),
     ),
     'disambiguated' => array(
       'cmodel' => 'islandora:personCModel',
-      'title' => 'MADS_disambiguated_fullname_mt',
+      'title' => variable_get('islandora_entities_disambiguated_solr_field', 'MADS_disambiguated_fullname_mt'),
     ),
     'last_name' => array(
       'cmodel' => 'islandora:personCModel',
-      'title' => 'MADS_family_mt',
+      'title' => variable_get('islandora_entities_last_name_solr_field', 'MADS_family_mt'),
     ),
   );
   $qualifier = $mappings[$type]['title'] . ':*';
@@ -86,24 +85,24 @@ function islandora_entities_autocomplete($type) {
     $stub = end($path_array);
     $qualifier = $mappings[$type]['title'] . ':' . $stub . '*';
   }
-  $params = array(
-    'fl' => array($mappings[$type]['title'], 'PID'),
-  );
   $query = "$qualifier AND " . 'RELS_EXT_hasModel_uri_mt:"' . $mappings[$type]['cmodel'] . '"';
-  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
-  $solr->setCreateDocuments(FALSE);
+  $qp = new IslandoraSolrQueryProcessor();
+  $qp->buildQuery($query);
+  $qp->solrParams['fl'] = "{$mappings[$type]['title']},PID";
+  $qp->executeQuery(FALSE);
   try {
-    $results = $solr->search($query, 0, 1000, $params);
-    $json = json_decode($results->getRawResponse(), TRUE);
+    $results = $qp->islandoraSolrResult['response']['objects'];
   }
   catch (Exception $e) {
     watchdog_exception('Islandora Entities', $e, 'Got an exception while searching entities for callback.', array(), WATCHDOG_ERROR);
+    $results = array();
   }
   $list = array();
-  foreach ($json['response']['docs'] as $choice) {
-    if (isset($choice[$mappings[$type]['title']])) {
-      $list[$choice[$mappings[$type]['title']][0]] = $choice[$mappings[$type]['title']][0];
+  if ($results) {
+    foreach ($results as $choice) {
+      if (isset($choice['solr_doc'][$mappings[$type]['title']])) {
+        $list[$choice['solr_doc'][$mappings[$type]['title']][0]] = $choice['solr_doc'][$mappings[$type]['title']][0];
+      }
     }
   }
 
