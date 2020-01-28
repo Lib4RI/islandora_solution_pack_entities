@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * @file
+ * Installation hooks for Islandora Entities CSV Import.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function islandora_entities_csv_import_uninstall() {
+	$vars = array(
+		'islandora_entities_csv_import_delimiter',
+	);
+	array_walk($vars, 'variable_del');
+}

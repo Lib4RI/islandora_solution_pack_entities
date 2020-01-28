@@ -17,16 +17,24 @@ Install as usual, see [this](https://drupal.org/documentation/install/modules-th
 
 ## Configuration
 
-Prepare a comma-delimited CSV file using the column names below. Only columns with names in the list will be processed; 
-all others will be ignored. Any comma within a field must be replaced with a double pipe ie - 'Nursing, Department of' 
-must be replaced with 'Nursing|| Department of'.
+Prepare a 'pipe'-delimited CSV ('pipe' means vertical bar) using the column names below,
+however you may re-configure this in admin/islandora/solution_pack_config/entities
 
-Multiple arguments within one column can be separated with a tilde (~). However, this may yield unexpected results 
+Multiple arguments within one CSV column can be separated with a tilde (~). However, this may yield unexpected results 
 (missing XML attributes, improper nesting) if used outside the following fields: FAX, PHONE, EMAIL, POSITION. 
 
+Comma within a field/cell (example: 'Trump, Donald') are supported now.
 
+## Formal Background
+
+The fields used in the CSV may not match the [Outline of Elements and Attributes in MADS](http://www.loc.gov/standards/mads/mads-outline-2-0.html) directly,
+but they will be mapped accoording to this outline when the MADS XML file will be created.
+
+## CSV Restriction
+
+Only columns with names in the list will be processed; all others will be ignored.
 ```
-STATUS
+STATUS		/* will become element <note type='status'> in MADS */
 POSITION
 EMAIL
 BUILDING
@@ -38,7 +46,7 @@ FAMILY_NAME
 FAX
 PHONE
 DISPLAY_NAME
-DEPARTMENT
+DEPARTMENT	/* will become element <organization> in MADS */
 BUILDING
 CAMPUS
 NAME_DATE
@@ -47,6 +55,7 @@ CITY
 STATE
 COUNTRY
 POSTCODE
+HOURS
 START_DATE
 END_DATE
 ROOM_NUMBER
@@ -73,18 +82,18 @@ This will be transformed into the following MADS record:
     <affiliation>
         <organization>[DEPARTMENT]</organization>
         <position>[POSITION]</position>
-        <address>
 		<email>[EMAIL]</email>
 		<phone>[PHONE]</phone>
 		<fax>[FAX]</fax>
-		<street>[STREET]</street>
-		<city>[CITY]</city>
-		<state>[STATE]</state>
-		<country>[COUNTRY]</country>
-		<postcode>[POSTCODE]</postcode>
-		<start_date>[START_DATE]</start_date>
-		<end_date>[END_DATE]</end_date>
-	</address>
+        <address>
+		    <street>[STREET]</street>
+		    <city>[CITY]</city>
+		    <state>[STATE]</state>
+		    <country>[COUNTRY]</country>
+		    <postcode>[POSTCODE]</postcode>
+	    </address>
+		<dateValid point='start'>[START_DATE]</dateValid>
+		<dateValid point='end'>[END_DATE]</dateValid>
     </affiliation>
     <note type="address">[ROOM_NUMBER] [BUILDING] [CAMPUS]</note>
     <identifier type="u1">[IDENTIFIER]</identifier>

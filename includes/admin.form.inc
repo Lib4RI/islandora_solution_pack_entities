@@ -188,5 +188,14 @@ function islandora_entities_settings($form, &$form_state) {
     '#required' => TRUE,
   );
 
+  $form['islandora_entities_csv_import_delimiter'] = array(
+    '#type' => 'textfield',
+    '#title' => t('CSV Import: Delimiter used in CSV'),
+    '#default_value' => variable_get('islandora_entities_csv_import_delimiter','|'),
+    '#description' => t('Main delimiter in CSV file you want to import.'),
+    '#required' => TRUE,
+  );
+
+
   return system_settings_form($form);
 }
