@@ -32,6 +32,7 @@ function islandora_entities_uninstall() {
     'islandora_entities_disambiguated_solr_field',
     'islandora_entities_last_name_solr_field',
     'islandora_entities_query_sort',
+    'islandora_entities_query_sort_direction',
     'islandora_entities_citation_number',
     'islandora_entities_citation_author_solr_field',
     'islandora_entities_linking_content_solr_field',
@@ -63,6 +64,7 @@ function islandora_entities_install_solr_metadata_config($config_name, $machine_
   $configuration_id = islandora_solr_metadata_add_configuration($config_name, $machine_name);
   islandora_solr_metadata_add_content_models($configuration_id, $configs['cmodels']);
   islandora_solr_metadata_add_fields($configuration_id, $configs['fields']);
+  islandora_solr_metadata_update_description($configuration_id, $configs['description']['field'], $configs['description']['display_label'], $configs['description']['data']);
   drupal_set_message($t("Configuration '@config' installed.", array('@config' => $config_name)));
 }
 
@@ -128,6 +130,11 @@ function islandora_entities_get_scholar_config_fields() {
     'weight' => ++$weight,
     'solr_field' => 'MADS_url_ms',
   );
+  $configs['description'] = array(
+    'field' => 'MADS_history_ms',
+    'display_label' => 'Biography',
+    'data' => array(),
+  );
   $configs['fields'] = $fields;
   $configs['cmodels'] = $content_models;
   return $configs;
@@ -183,4 +190,32 @@ function islandora_entities_get_dept_config_fields() {
   $configs['fields'] = $fields;
   $configs['cmodels'] = $content_models;
   return $configs;
+}
+
+/**
+ * Add the default description field to the Scholar solr metadata profile.
+ */
+function islandora_entities_update_7100() {
+  module_load_include('inc', 'islandora_solr_metadata', 'includes/db');
+  $config_id = islandora_solr_metadata_retrieve_configuration_from_machine_name('Scholar');
+  if ($config_id) {
+    $description = islandora_solr_metadata_retrieve_description($config_id);
+    if (!$description['description_field']) {
+      islandora_solr_metadata_update_description($config_id, 'MADS_history_ms', 'Biography', $description['data']);
+    }
+  }
+}
+/**
+ * Print and log a message about potential lost Position data.
+ *
+ * @see https://jira.duraspace.org/browse/ISLANDORA-2137
+ */
+function islandora_entities_update_7200(&$sandbox) {
+  $t = get_t();
+  watchdog('islandora_entities', 'The original default form used two-word labels in the Position element, but removed spaces in the MADS XML.  This has been fixed as of 7.x-1.13. When editing existing objects with the new form, older values under Position will not be read and will be discarded.', array(), WATCHDOG_NOTICE, l(t('ISLANDORA-2137'), 'https://jira.duraspace.org/browse/ISLANDORA-2317', array('external' => TRUE)));
+  return $t('The original default form used two-word labels in the Position element, but removed spaces in the MADS XML.  This has been fixed as of 7.x-1.13. When editing existing objects with the new form, older values under Position will not be read and will be discarded.  Please consult the !url for further information.',
+    array(
+      '!url' => l(t('ticket'), 'https://jira.duraspace.org/browse/ISLANDORA-2137', array('absolute' => TRUE)),
+    )
+  );
 }
